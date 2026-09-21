@@ -1,5 +1,6 @@
 name: Codacy CI
 
+# Eventos disparadores que inician la ejecución del workflow[cite: 1]
 on:
   push:
     branches:
@@ -11,6 +12,12 @@ on:
 jobs:
   codacy:
     runs-on: ubuntu-24.04
+    
+    # 2. Modificación: Configuración de la matriz para probar varias versiones de Python
+    strategy:
+      matrix:
+        python-version: ["3.13", "3.14"]
+
     services:
       mariadb:
         image: mariadb:12.0.2
@@ -28,33 +35,46 @@ jobs:
           --health-retries=3
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v5
+      # Acción checkout predefinida para clonar el código en el entorno del runner[cite: 1]
+      - name: Checkout code
+        uses: actions/checkout@v5
 
-    - name: Set up Python
-      uses: actions/setup-python@v6
-      with:
-        python-version: '3.13'
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          # Usamos la variable de la matriz de Python
+          python-version: ${{ matrix.python-version }}
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -e ./rosemary
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e ./rosemary
 
-    - name: Run tests with coverage
-      run: |
-        coverage run -m pytest app/features/ --ignore-glob='*selenium*'
-        coverage xml
-      env:
-        FLASK_ENV: testing
-        MARIADB_HOSTNAME: 127.0.0.1
-        MARIADB_PORT: 3306
-        MARIADB_TEST_DATABASE: uvlhubdb_test
-        MARIADB_USER: uvlhub_user
-        MARIADB_PASSWORD: uvlhub_password
+      # 1. Modificación: Nuevo step para verificar dependencias desactualizadas
+      - name: Check for outdated dependencies
+        run: pip list --outdated
 
-    - name: Upload coverage to Codacy
-      run: bash <(curl -Ls https://coverage.codacy.com/get.sh) report -r coverage.xml
-      env:
-        CODACY_PROJECT_TOKEN: ${{ secrets.CODACY_PROJECT_TOKEN }}
+      # 3. Modificación: Nuevo step para análisis de seguridad
+      - name: Security scan with pip-audit
+        run: |
+          pip install pip-audit
+          pip-audit
+
+      - name: Run tests with coverage
+        run: |
+          coverage run -m pytest app/features/ --ignore-glob='*selenium*'
+          coverage xml
+        env:
+          FLASK_ENV: testing
+          MARIADB_HOSTNAME: 127.0.0.1
+          MARIADB_PORT: 3306
+          MARIADB_TEST_DATABASE: uvlhubdb_test
+          MARIADB_USER: uvlhub_user
+          MARIADB_PASSWORD: uvlhub_password
+
+      - name: Upload coverage to Codacy
+        run: bash <(curl -Ls https://coverage.codacy.com/get.sh) report -r coverage.xml
+        env:
+          # Se extrae de los secretos del repositorio, que almacenan de manera segura tokens y contraseñas[cite: 1]
+          CODACY_PROJECT_TOKEN: ${{ secrets.CODACY_PROJECT_TOKEN }}
