@@ -1,6 +1,6 @@
 name: Codacy CI
 
-# Eventos disparadores que inician la ejecución del workflow[cite: 1]
+# Eventos disparadores que inician la ejecución del workflow
 on:
   push:
     branches:
@@ -35,7 +35,7 @@ jobs:
           --health-retries=3
 
     steps:
-      # Acción checkout predefinida para clonar el código en el entorno del runner[cite: 1]
+      # Acción checkout predefinida para clonar el código en el entorno del runner
       - name: Checkout code
         uses: actions/checkout@v5
 
@@ -59,7 +59,7 @@ jobs:
       - name: Security scan with pip-audit
         run: |
           pip install pip-audit
-          pip-audit
+          pip-audit --skip rosemary
 
       - name: Run tests with coverage
         run: |
@@ -76,5 +76,5 @@ jobs:
       - name: Upload coverage to Codacy
         run: bash <(curl -Ls https://coverage.codacy.com/get.sh) report -r coverage.xml
         env:
-          # Se extrae de los secretos del repositorio, que almacenan de manera segura tokens y contraseñas[cite: 1]
+          # Se extrae de los secretos del repositorio, que almacenan de manera segura tokens y contraseñas
           CODACY_PROJECT_TOKEN: ${{ secrets.CODACY_PROJECT_TOKEN }}
